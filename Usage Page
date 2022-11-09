@@ -1,0 +1,58 @@
+config:
+  label: Energy Usage
+  period: W
+  sidebar: true
+slots:
+  grid:
+    - component: oh-chart-grid
+      config:
+        bottom: 55%
+    - component: oh-chart-grid
+      config:
+        top: 55%
+  series:
+    - component: oh-time-series
+      config:
+        gridIndex: 0
+        item: ElecUsage0
+        name: Electricity Usage
+        type: bar
+        xAxisIndex: 0
+        yAxisIndex: 0
+    - component: oh-time-series
+      config:
+        gridIndex: 1
+        item: GasUsage0
+        name: Gas Usage
+        type: bar
+        xAxisIndex: 1
+        yAxisIndex: 1
+  title:
+    - component: oh-chart-title
+      config:
+        show: true
+        text: Electricity
+        top: 3%
+    - component: oh-chart-title
+      config:
+        show: true
+        text: Gas
+        top: 50%
+  xAxis:
+    - component: oh-time-axis
+      config:
+        gridIndex: 0
+        nameLocation: center
+    - component: oh-time-axis
+      config:
+        gridIndex: 1
+        nameLocation: center
+  yAxis:
+    - component: oh-value-axis
+      config:
+        gridIndex: 0
+        name: KwH
+    - component: oh-value-axis
+      config:
+        gridIndex: 1
+        name: m³
