@@ -1,0 +1,47 @@
+config:
+  label: Energy Cost
+  period: W
+  sidebar: true
+slots:
+  grid:
+    - component: oh-chart-grid
+      config: {}
+  legend:
+    - component: oh-chart-legend
+      config:
+        orient: horizontal
+        show: true
+  series:
+    - component: oh-time-series
+      config:
+        gridIndex: 0
+        item: ElecCost0
+        name: Electricity
+        type: line
+        xAxisIndex: 0
+        yAxisIndex: 0
+    - component: oh-time-series
+      config:
+        gridIndex: 0
+        item: GasCost0
+        name: Gas
+        type: line
+        xAxisIndex: 0
+        yAxisIndex: 0
+    - component: oh-time-series
+      config:
+        gridIndex: 0
+        item: TotalCost0
+        name: Total Cost
+        type: line
+        xAxisIndex: 0
+        yAxisIndex: 0
+  xAxis:
+    - component: oh-time-axis
+      config:
+        gridIndex: 0
+  yAxis:
+    - component: oh-value-axis
+      config:
+        gridIndex: 0
+        name: £
