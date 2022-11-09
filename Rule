@@ -1,0 +1,113 @@
+configuration: {}
+triggers:
+  - id: "2"
+    configuration:
+      startlevel: 20
+    type: core.SystemStartlevelTrigger
+  - id: "1"
+    configuration:
+      cronExpression: 0 0 13-20 * * ? *
+    type: timer.GenericCronTrigger
+  - id: "3"
+    configuration:
+      cronExpression: 0 0 0 * * ? *
+    type: timer.GenericCronTrigger
+conditions: []
+actions:
+  - inputs: {}
+    id: "4"
+    configuration:
+      type: application/vnd.openhab.dsl.rule
+      script: >2
+                // Set API key and Account details
+                val String eMPAN = "?" // Your electricity meter-point’s MPAN
+                val String eSerial = "?" // Your electricity meter’s serial number
+                val String gMPRN = "?" // Your gas meter-point’s MPRN
+                val String gSerial = "?" // Your gas meter’s serial number
+                val String APIkey = "?" // Your API key
+                val String AccountNo = "?" // Your account number
+                val Number ElecStanding = 24.38 // Your daily electricity standing charge if on fixed rate
+                val Number ElecPerKWH = 18.10 // Your daily electricity per KwH charge if on fixed rate
+                val Number GasStanding = 26.59 // Your daily gas standing charge if on fixed rate
+                val Number GasPerKWH = 3.3 // Your daily gas per KwH charge if on fixed rate
+                val String InfluxDB = "openhab" // Your Persistence Service InfluxDB name
+                val String InfluxUser = "?" // Your Persistence Service InfluxDB user name
+                val String InfluxPwd = "?" // Your Persistence Service InfluxDB password
+                
+                val url = "http://localhost:8086/write?u="+InfluxUser+"&p="+InfluxPwd+"&db="+InfluxDB
+                val fullAPIkey = APIkey+":"
+                val encodedAPIkey = java.util.Base64.getEncoder().encodeToString(fullAPIkey.getBytes())
+                val headers = newHashMap("Authorization"-> "Basic "+encodedAPIkey)
+
+                // Set Date strings
+                val String dateString = String::format( "%1$tY-%1$tm-%1$td", new java.util.Date )
+                val String dateYesterday = String::format( "%1$tY-%1$tm-%1$td", now.minusDays(1))
+                val String strTime1 = "12:00:00"
+                val String strDate = now.minusDays(1).toLocalDateTime.toString.split("T").get(0) + "T"
+                val ZonedDateTime dteTime1 = ZonedDateTime.parse(strDate + strTime1 + ".000Z").withZoneSameLocal(ZoneId.systemDefault())
+                val epochMilli = dteTime1.toInstant().toEpochMilli()
+                var nanoSeconds = dteTime1.toInstant().getNano()
+                val String nanoDate = ((epochMilli + (Math.round(nanoSeconds / 1000000))).toString)+"000000" 
+
+              /*
+                // Get Gas Rate Today
+                val String TrackerJSONgas = sendHttpGetRequest("https://octopus.energy/api/v1/tracker/G-1R-SILVER-2017-1-B/daily/current/0/1/")
+                val Number GasUnitToday = (Double::parseDouble(transform("JSONPATH", "$.periods[?(@.date == '"+dateString+"')].unit_rate", TrackerJSONgas)))    //extract the rate and convert to a number
+                logWarn ("rules.TrackerGetRates", "Gas unit rate today: "+GasUnitToday.toString)
+                val GasStandingToday = (Double::parseDouble(transform("JSONPATH", "$.periods[?(@.date == '"+dateString+"')].standing_charge", TrackerJSONgas))) //extract the standing charge and convert to a number
+                logWarn ("rules.TrackerGetRates", "Gas Standing Charge today: "+GasStandingToday.toString)
+
+                // Get Electricity Rate Today
+                val String TrackerJSONelec = sendHttpGetRequest("https://octopus.energy/api/v1/tracker/E-1R-SILVER-2017-1-B/daily/current/0/1/")
+                val ElecUnitToday = (Double::parseDouble(transform("JSONPATH", "$.periods[?(@.date == '"+dateString+"')].unit_rate", TrackerJSONelec)))        //extract the rate and convert to a number
+                logWarn ("rules.TrackerGetRates", "Elec unit rate today: "+ElecUnitToday.toString)
+                val ElecStandingToday = (Double::parseDouble(transform("JSONPATH", "$.periods[?(@.date == '"+dateString+"')].standing_charge", TrackerJSONelec)))       //extract the standing charge and convert to a number
+                logWarn ("rules.TrackerGetRates", "Elec Standing Charge today: "+ElecStandingToday.toString)
+              */
+
+                // Get yesterdays electricity usage
+                val String ElecUsageJSON = sendHttpGetRequest("https://api.octopus.energy/v1/electricity-meter-points/"+eMPAN+"/meters/"+eSerial+"/consumption/?period_from="+dateYesterday+"T00:00:01Z&period_to="+dateYesterday+"T23:59:59Z&group_by=day", headers, 1000)
+                //logWarn ("rules.TrackerGetRates", "Usage Response: "+ElecUsageJSON.toString)
+                val Number ElecUsageYesterday = (Double::parseDouble(transform("JSONPATH", "$.results[?(@.interval_start =~ /"+dateYesterday+".*?/i)].consumption", ElecUsageJSON)))    //extract yesterdays consumption and convert to a number
+                logWarn ("rules.TrackerGetRates", "Yesterdays Elec Usage: "+ElecUsageYesterday.toString)
+                val String PostElecUsage = "ElecUsage0 value="+ElecUsageYesterday.toString+" "+nanoDate
+                //logWarn ("rules.TrackerGetRates", "Elec Post: "+PostElecUsage.toString)
+
+                // Get yesterdays gas usage
+                val String GasUsageJSON = sendHttpGetRequest("https://api.octopus.energy/v1/gas-meter-points/"+gMPRN+"/meters/"+gSerial+"/consumption/?period_from="+dateYesterday+"T00:00:01Z&period_to="+dateYesterday+"T23:59:59Z&group_by=day", headers, 1000)
+                //logWarn ("rules.TrackerGetRates", "Usage Response: "+GasUsageJSON.toString)
+                val Number GasUsageYesterday = (Double::parseDouble(transform("JSONPATH", "$.results[?(@.interval_start =~ /"+dateYesterday+".*?/i)].consumption", GasUsageJSON)))    //extract yesterdays consumption and convert to a number
+                logWarn ("rules.TrackerGetRates", "Yesterdays Gas Usage: "+GasUsageYesterday.toString)
+                val String PostGasUsage = "GasUsage0 value="+GasUsageYesterday.toString+" "+nanoDate
+
+                // Calculate yesterdays electricity cost
+                val ElecKWH = ElecUsageYesterday * ElecPerKWH
+                val ElecCost = (ElecStanding + ElecKWH)/100
+                val String PostElecCost = "ElecCost0 value="+ElecCost.toString+" "+nanoDate
+                logWarn ("rules.TrackerGetRates", "Yesterdays Elec Cost: "+ElecCost.toString)
+
+                // Calculate yesterdays gas cost
+                val GasKWH = (GasUsageYesterday * 10.55) * GasPerKWH
+                val GasCost = (GasStanding + GasKWH)/100
+                val String PostGasCost = "GasCost0 value="+GasCost.toString+" "+nanoDate
+                logWarn ("rules.TrackerGetRates", "Yesterdays Gas Cost: "+GasCost.toString)
+                
+                // Calculate yesterdays total energy cost
+                val TotalEnergyCost = ElecCost + GasCost
+                val String PostTotalCost = "TotalCost0 value="+TotalEnergyCost.toString+" "+nanoDate
+
+                // Update the items
+                val ElecUsageResponse = sendHttpPostRequest(url, "application/json", PostElecUsage, 1000)
+                val ElecCostResponse = sendHttpPostRequest(url, "application/json", PostElecCost, 1000)  
+                val GasUsageResponse = sendHttpPostRequest(url, "application/json", PostGasUsage, 1000)
+                val GasCostResponse = sendHttpPostRequest(url, "application/json", PostGasCost, 1000)
+                val TotalCostResponse = sendHttpPostRequest(url, "application/json", PostTotalCost, 1000)
+                //GasUnit0.postUpdate(GasUnitToday)
+                //GasStanding0.postUpdate(GasStandingToday)
+                //ElecUnit0.postUpdate(ElecUnitToday)
+                //ElecStanding0.postUpdate(ElecStandingToday)
+                //GasUsage0.postUpdate(GasUsageYesterday)
+                //GasCost0.postUpdate(GasCostYesterday)
+                //ElecUsage0.postUpdate(ElecUsageYesterday)
+                //ElecCost00.postUpdate(ElecCostYesterday)
+    type: script.ScriptAction
