@@ -102,12 +102,4 @@ actions:
                 val GasUsageResponse = sendHttpPostRequest(url, "application/json", PostGasUsage, 1000)
                 val GasCostResponse = sendHttpPostRequest(url, "application/json", PostGasCost, 1000)
                 val TotalCostResponse = sendHttpPostRequest(url, "application/json", PostTotalCost, 1000)
-                //GasUnit0.postUpdate(GasUnitToday)
-                //GasStanding0.postUpdate(GasStandingToday)
-                //ElecUnit0.postUpdate(ElecUnitToday)
-                //ElecStanding0.postUpdate(ElecStandingToday)
-                //GasUsage0.postUpdate(GasUsageYesterday)
-                //GasCost0.postUpdate(GasCostYesterday)
-                //ElecUsage0.postUpdate(ElecUsageYesterday)
-                //ElecCost00.postUpdate(ElecCostYesterday)
     type: script.ScriptAction
